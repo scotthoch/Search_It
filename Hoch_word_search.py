@@ -105,7 +105,12 @@ def subtract_main_diags(start, stop, diag, main_length, wrap):
     return start - let_to_skip , stop - let_to_skip
 
 def coordinate_to_grid(start, stop, diag, mis_match, match_side=1):
-    if match_side*mis_match >=0: #more columns than rows or a square matrix
+    if mis_match==0:
+        if match_side>0:
+            return [start,start+diag],[stop, stop+diag]
+        else:
+            return [start+diag,start],[stop+diag,stop]
+    elif match_side*mis_match >=0: #more columns than rows or a square matrix
         return [start,start+diag],[stop, stop+diag]
     else:
         return [start+diag,start],[stop+diag,stop]
@@ -162,9 +167,8 @@ def row_search(letter_array, word_list, dim_mat, wrap, transpose):
         letter_array_holder=join_list(map(list, zip(*letter_array)),',',wrap)
     #Get all the words in the dictionary for a search
     for word, found in word_list.items():
-        #only search for a word if it has not been found yet
-        if found=='NOT_FOUND':
-
+        #only search for a word if it has not been found yet, and that are shorter than the relavent direction
+        if (found=='NOT_FOUND' and len(word)<=dim_mat[not transpose] ):
             #check forward spelling case
             start, stop = word_search(letter_array_holder, word, 1)
             if type(start)==str:  #if word was not found check to see if it is spelled backwards
@@ -174,7 +178,6 @@ def row_search(letter_array, word_list, dim_mat, wrap, transpose):
                 stop_row, stop_col = num_to_row_col(stop, dim_mat, transpose, wrap)
                 word_list[word]=((start_row,start_col),(stop_row, stop_col))
                 letter_array=remove_letters(letter_array,[start_row, start_col],[stop_row, stop_col] )
-
     return letter_array, word_list
 
 def diag_search(letter_array, word_list, dim_mat, wrap, slope ):
@@ -197,7 +200,7 @@ def diag_search(letter_array, word_list, dim_mat, wrap, slope ):
             start, stop, diag = word_search(diag_mat, word, 1, 1)
             if type(start)==str: #check backward spelling if not found
                 start, stop, diag = word_search(diag_mat, word, -1, 1)
-            if type(start)==int: # if we have found the word in the puzzle
+            if (type(start)==int and len(word)<= diag_lookup[diag]): # if we have found the word in the puzzle and no double words
                 if diag==0: #on main diagonal
                     start, stop = start%main_length, stop%main_length
                     start, stop = coordinate_to_grid(start, stop, diag, mis_match)
@@ -212,9 +215,10 @@ def diag_search(letter_array, word_list, dim_mat, wrap, slope ):
                     diag_past_main=diag-num_main_diag # How many incomplete diagonals do we need to correct for
                     if diag_past_main%2==0: #same side as mis_match
                         num_shorter=int(0.5*(2+(diag_past_main)))-1 #prepare for a sum of even numbers
-                        start, stop = wrapper*num_shorter*(num_shorter+1)+start, wrapper*num_shorter*(num_shorter+1)+stop
+                        start, stop = (wrapper*num_shorter*(num_shorter+1))+start, (wrapper*num_shorter*(num_shorter+1))+stop
                         offset=num_main_diag+(diag_past_main/2)
                         start, stop = start%diag_lookup[diag], stop%diag_lookup[diag]
+                        print start, stop, word, offset, mis_match
                         start, stop = coordinate_to_grid(start, stop, offset, mis_match, 1)
                     if diag_past_main%2==1: #opposite side as mis_match
                         num_shorter=int(0.5*(2+(diag_past_main-1)))-1 # prepare for the sum of even numbers
@@ -222,6 +226,7 @@ def diag_search(letter_array, word_list, dim_mat, wrap, slope ):
                         stop = wrapper* (num_shorter*(num_shorter+1)+(diag_past_main/2)+1)+stop
                         offset=((diag_past_main+1)/2)
                         start, stop = start%diag_lookup[diag], stop%diag_lookup[diag]
+                        print start, stop, word, offset, mis_match
                         start, stop = coordinate_to_grid(start, stop, offset,mis_match, -1)
 
                 if slope==-1:
